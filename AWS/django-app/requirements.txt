@@ -1,0 +1,9 @@
+boto3==1.4.4
+Django==1.8.18
+django-admin-bootstrapped==2.5.7
+django-allauth==0.32.0
+django-ipware==1.1.6
+django-picklefield==0.3.2
+django-q==0.8.0
+django-select-multiple-field==0.4.2
+django-widget-tweaks==1.4.1
