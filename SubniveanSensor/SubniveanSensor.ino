@@ -11,14 +11,12 @@ const char* certificate  = SECRET_CERTIFICATE;
 WiFiClient    wifiClient;            // Used for the TCP socket connection
 BearSSLClient sslClient(wifiClient); // Used for SSL/TLS connection, integrates with ECC508
 MqttClient    mqttClient(sslClient);
-unsigned long lastMillis = 0;
 
 
 #include <DHT.h>
 #define DHTPIN 7     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
-int chk;
 float hum;  //Stores humidity value
 float temp; //Stores temperature value
 
@@ -27,7 +25,19 @@ float temp; //Stores temperature value
 #include <DallasTemperature.h>
 #define ONE_WIRE_BUS 2
 OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature snowTemp(&oneWire);
+DallasTemperature snowTempSens(&oneWire);
+float snowTemp;
+
+
+#include <Arduino.h>
+#include "wiring_private.h"
+Uart ultrasonic(&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+void SERCOM0_Handler(){
+  ultrasonic.IrqHandler();
+}
+unsigned char data[4]={};
+float distance;
+float snowDepth;
 
 
 void setup() {
@@ -46,8 +56,10 @@ void setup() {
   mqttClient.onMessage(onMessageReceived);
 
   dht.begin();
-  snowTemp.begin();
-
+  snowTempSens.begin();
+  pinPeripheral(5, PIO_SERCOM_ALT);
+  pinPeripheral(6, PIO_SERCOM_ALT);
+  ultrasonic.begin(9600);
 }
 
 void loop() {
@@ -71,10 +83,50 @@ void loop() {
   Serial.print(" %, Ambient Temp: ");
   Serial.print(temp);
   Serial.println(" Celsius");
-  snowTemp.requestTemperatures();
-  Serial.print("Temperature is: ");
-  Serial.println(snowTemp.getTempCByIndex(0));
-  delay(1000); //Delay 2 sec.  
+  snowTempSens.requestTemperatures();
+  Serial.print("Snow temperature is: ");
+  snowTemp = snowTempSens.getTempCByIndex(0);
+  Serial.println(snowTemp);
+  do{
+    for(int i = 0; i < 4; i++){
+      data[i] = ultrasonic.read();
+    }
+  } while(ultrasonic.read() == 0xff);
+  ultrasonic.flush();
+  if(data[0] == 0xff){
+    int sum;
+    sum = (data[0] + data[1] + data[2]) & 0x00FF;
+    if(sum == data[3]){
+      distance = (data[1]<<8) + data[2];
+      if(distance > 30){
+        Serial.print("Distance = ");
+        Serial.print(distance);
+        Serial.println("mm");
+        snowDepth = 3 - (distance/1000);
+        Serial.print("Snowdepth = ");
+        Serial.print(snowDepth);
+        Serial.println("m");
+      } else {
+        Serial.println("Distance below lower limit");
+        snowDepth = -1;
+      }
+    } else {
+      Serial.println("Error");
+    }
+  }
+  
+  mqttClient.beginMessage("arduino/outgoing");   //message topic
+  mqttClient.print("{\"ambTemp\": ");
+  mqttClient.print(temp);
+  mqttClient.print(", \"ambHum\": ");
+  mqttClient.print(hum);
+  mqttClient.print(", \"snowTemp\": ");
+  mqttClient.print(snowTemp);
+  mqttClient.print(", \"snowDepth\": ");
+  mqttClient.print(snowDepth);
+  mqttClient.print("}");
+  mqttClient.endMessage();
+  delay(1000);
 }
 
 
