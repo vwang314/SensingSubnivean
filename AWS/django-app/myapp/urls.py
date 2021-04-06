@@ -12,16 +12,9 @@ favicon_view = RedirectView.as_view(url='/static/favicon.ico', permanent=True)
 
 urlpatterns = patterns('',
     url(r'^$',  views.home_page, name ='home_page'),
-    url(r'^rawdata/$',  views.raw_data_page, name ='raw_data_page'),  
-    url(r'^download/$', views.download, name ='download'),
-    url(r'^analytics/$', views.analytics, name='analytics'),  
     url(r'^dashboard/$', views.dashboard_home, name = 'dashboard_home'),
     url(r'^filter_data/(?P<asset_filter>[\w-]+)$', views.filter_data, name ='filter_data'),
     #url(r'^filter_data_item/(?P<item_filter>[\w-]+)$', views.filter_data_item, name ='filter_data_item'),
     url(r'^filter_data_time/(?P<time_filter>[\w-]+)$', views.filter_data_time, name ='filter_data_time'),
-
-    url(r'^filter_raw_data/(?P<asset_filter>[\w-]+)$', views.filter_raw_data, name ='filter_raw_data'),
-    url(r'^filter_raw_data_time/(?P<time_filter>[\w-]+)$', views.filter_raw_data_time, name ='filter_raw_data_time'),
-
 
  )

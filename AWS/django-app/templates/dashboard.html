@@ -4,7 +4,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Air Quality Monitoring</title>
+	<title>Sensing the Subnivean</title>
 
 	<!-- Global stylesheets -->
 	<link href="https://fonts.googleapis.com/css?family=Roboto:400,300,100,500,700,900" rel="stylesheet" type="text/css">
@@ -98,7 +98,7 @@
 
 <!-- Content area -->
 				<div class="content">
-				<h4><i class="icon-stack position-left"></i> <span class="text-semibold">Raw Pollutants Data </span> </h4>
+				<h4><i class="icon-stack position-left"></i> <span class="text-semibold">Subnivean Sensor Data </span> </h4>
 
 					<!-- Basic datatable -->
 					<div class="panel panel-flat">
@@ -122,10 +122,10 @@
 									<th>Timestamp</th>
 									<th>Latitude</th>
 									<th>Longitude</th>
-									<th>PM2.5</th>
-									<th>PM10</th>
-									<th>CO</th>									
-									<th>SO2</th>
+									<th>Ambient Temperature</th>
+									<th>Ambient Humidity</th>
+									<th>Snow Temperature</th>									
+									<th>Snow Depth</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -135,10 +135,10 @@
 									<td>{{item.timestamp}}</td>									
 									<td>{{item.data.latitude}}</td>
 									<td>{{item.data.longitude}}</td>
-									<td>{{item.data.pm2_5}}</td>
-									<td>{{item.data.pm10}}</td>	
-									<td>{{item.data.co}}</td>	
-									<td>{{item.data.so2}}</td>	
+									<td>{{item.data.amb_temp}}</td>
+									<td>{{item.data.amb_hum}}</td>	
+									<td>{{item.data.snow_temp}}</td>	
+									<td>{{item.data.snow_depth}}</td>	
 								</tr>
 								{% endfor %}
 							</tbody>
