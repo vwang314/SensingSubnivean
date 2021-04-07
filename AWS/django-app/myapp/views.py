@@ -32,6 +32,7 @@ import io, base64
 import bcrypt
 import uuid
 from itsdangerous import URLSafeTimedSerializer
+from django.template.context_processors import csrf
 
 sys.path.append(os.path.abspath(os.path.join('..', 'utils')))
 from env import AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY, AWS_REGION
@@ -62,7 +63,7 @@ def check_login_session(request):
         return False
 
 def home_page(request):
-    #if check_login_session(request):
+    if check_login_session(request):
         #ts=datetime.datetime.utcnow() - datetime.timedelta(hours=12)
         #timestampold=str(ts.strftime("%Y-%m-%dT:%H:%M:%S"))
         now=int(time.time())
@@ -75,8 +76,9 @@ def home_page(request):
         items = response['Items']
         variables = RequestContext(request, {'items':items})
         return render_to_response('dashboard.html', variables)
-    #else:
-    #    return render_to_response('login.html')
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('login.html', variables)
 
 def download(request):
     response = HttpResponse(content_type='text/csv')
@@ -143,8 +145,94 @@ def filter_data_time(request,time_filter):
     variables = RequestContext(request, {'items':items})
     return render_to_response('dashboard.html',variables)
 
+def signup(request):
+    print(request.GET)
+    print(request.POST)
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        password1 = request.POST.get('password1')
+        existing_emails = users_table.scan(FilterExpression=Attr('email').eq(email))
+        matching_emails = existing_emails['Items']
+        if (len(matching_emails) == 0) and (password == password1):
+            userID = uuid.uuid4()
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            users_table.put_item(
+                Item={
+                    "userID": str(userID),
+                    "username": username,
+                    "name": name,
+                    "email": email,
+                    "password": hashed_password,
+                    "verified": "no"
+                }
+            )
+            serializer = URLSafeTimedSerializer('some_secret_key')
+            token = serializer.dumps(email, salt='some-secret-salt-for-confirmation')
+            ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            SENDER = 'vwang314@gatech.edu'
+            RECEIVER = email
+            try:
+                #Provide the contents of the email.
+                response = ses.send_email(
+                    Destination={
+                        'ToAddresses': [RECEIVER],
+                    },
+                    Message={
+                        'Body': {
+                            'Text': {
+                                'Data': 'Confirm your email at http://ec2-3-80-50-95.compute-1.amazonaws.com:5000/confirm/' + str(token),
+                            },
+                        },
+                        'Subject': {
+                            'Data': 'Photo Gallery Email Confirmation'
+                        },
+                    },
+                    Source=SENDER
+                )
+            # Display an error if something goes wrong.
+            except ClientError as e:
+                print(e.response['Error']['Message'])
+            else:
+                print("Email sent! Message ID:"),
+                print(response['MessageId']),
+                print(token),
+            return render_to_response('confirmemail.html')
+        variables = RequestContext(request, {})
+        return render_to_response('login.html', variables)
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('signup.html', variables)
+
+def login(request):
+    if request.method == 'POST':
+        try:
+            email = request.form['email']
+            password = request.form['password']
+            existing_email = users_table.scan(FilterExpression=Attr('email').eq(email))
+            matching_email = existing_email['Items']
+            if existing_email is None:
+                return redirect('/')
+            elif (bcrypt.hashpw(password.encode('utf-8'), matching_email[0]['password'].value) == matching_email[0]['password'].value) and matching_email[0]['verified'] == "yes":
+                serializer = URLSafeTimedSerializer('some_secret_key')
+                session['email'] = serializer.dumps(matching_email[0]['email'], salt="some-secret-salt-for-confirmation")
+            return redirect('/')
+        except Exception as e:
+            print(e)
+            return redirect('/')
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('login.html', variables)
+
 def dashboard_home(request):    
     variables = RequestContext(request, {})
     return render_to_response('dashboard.html', variables)
 
+def signup(request):
+    variables = RequestContext(request, {})
+    return render_to_response('signup.html', variables)
 
+def forgot(request):
+    return render_to_response('forgotpassword.html')

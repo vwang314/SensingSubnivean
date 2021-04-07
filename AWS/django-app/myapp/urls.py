@@ -17,4 +17,7 @@ urlpatterns = patterns('',
     #url(r'^filter_data_item/(?P<item_filter>[\w-]+)$', views.filter_data_item, name ='filter_data_item'),
     url(r'^filter_data_time/(?P<time_filter>[\w-]+)$', views.filter_data_time, name ='filter_data_time'),
 
+    url(r'^signup/$', views.signup, name='signup'),
+    url(r'^forgot/$', views.forgot, name='forgot'),
+    url(r'^login/$', views.login, name='login'),
  )
