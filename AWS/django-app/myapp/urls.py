@@ -22,4 +22,5 @@ urlpatterns = patterns('',
     url(r'^login/$', views.login, name='login'),
     url(r'^confirm/$', views.confirm, name='confirm'),
     url(r'^confirmemail/$', views.confirmemail, name='confirmemail'),
+    url(r'^accounts/logout/$', views.logout, name='logout'),
  )

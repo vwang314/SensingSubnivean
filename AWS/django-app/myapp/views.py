@@ -233,9 +233,6 @@ def login(request):
             password = request.POST.get('password')
             existing_username = users_table.scan(FilterExpression=Attr('username').eq(username))
             matching_username = existing_username['Items']
-            print(username)
-            print(password)
-            print(matching_username)
             if existing_username is None:
                 return redirect('/')
             elif (bcrypt.hashpw(password.encode('utf-8'), matching_username[0]['password'].value) == matching_username[0]['password'].value) and matching_username[0]['verified'] == "yes":
@@ -248,6 +245,14 @@ def login(request):
     else:
         variables = RequestContext(request, {})
         return render_to_response('login.html', variables)
+
+def logout(request):
+    try:
+        del request.session['email']
+        return redirect('/')
+    except Exception as e:
+        print(e)
+        return redirect('/login')
 
 def dashboard_home(request):    
     variables = RequestContext(request, {})
