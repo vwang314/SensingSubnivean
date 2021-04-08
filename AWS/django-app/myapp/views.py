@@ -263,4 +263,76 @@ def confirmemail(request):
     return render_to_response('confirmemail.html', variables)
 
 def forgot(request):
-    return render_to_response('forgotpassword.html')
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        existing_emails = users_table.scan(FilterExpression=Attr('email').eq(email))
+        matching_emails = existing_emails['Items']
+        if (len(matching_emails) == 1):
+            serializer = URLSafeTimedSerializer('some_secret_key')
+            token = serializer.dumps(email, salt='some-secret-salt-for-confirmation')
+            ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            SENDER = 'vwang314@gatech.edu'
+            RECEIVER = email
+            print(token)
+            try:
+                #Provide the contents of the email.
+                response = ses.send_email(
+                    Destination={
+                        'ToAddresses': [RECEIVER],
+                    },
+                    Message={
+                        'Body': {
+                            'Text': {
+                                'Data': 'Reset your password at http://ec2-54-175-15-136.compute-1.amazonaws.com:8000/np/  \n Use the confirmation key:   ' + str(token),
+                            },
+                        },
+                        'Subject': {
+                            'Data': 'Subnivean Data Password Reset'
+                        },
+                    },
+                    Source=SENDER
+                )
+            # Display an error if something goes wrong.
+            except ClientError as e:
+                print(e.response['Error']['Message'])
+            else:
+                print("Email sent! Message ID:"),
+                print(response['MessageId']),
+                print(token),
+        return redirect('/login')
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('forgotpassword.html', variables)
+    
+def newpassword(request):
+    if request.method == 'POST':
+        token = request.POST.get('token')
+        password = request.POST.get('password')
+        password1 = request.POST.get('password1')
+        if(password == password1):
+            try:
+                serializer = URLSafeTimedSerializer('some_secret_key')
+                email = serializer.loads(
+                    str(token),
+                    salt = 'some-secret-salt-for-confirmation'
+                )
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                users_table.update_item(
+                    Key={
+                        'email': email
+                    },
+                    UpdateExpression = "SET password=:p",
+                    ExpressionAttributeValues={ 
+                        ':p': hashed_password 
+                    }
+                )
+                return redirect('/login')
+            except Exception as e:
+                print('error resetting password')
+                print(e)
+                return redirect('/np/')
+        else:
+            return redirect('/np/')
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('newpassword.html', variables)

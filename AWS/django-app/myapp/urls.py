@@ -23,4 +23,5 @@ urlpatterns = patterns('',
     url(r'^confirm/$', views.confirm, name='confirm'),
     url(r'^confirmemail/$', views.confirmemail, name='confirmemail'),
     url(r'^accounts/logout/$', views.logout, name='logout'),
+    url(r'^np/$', views.newpassword, name='newpassword')
  )
