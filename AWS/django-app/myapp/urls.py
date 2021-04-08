@@ -20,4 +20,6 @@ urlpatterns = patterns('',
     url(r'^signup/$', views.signup, name='signup'),
     url(r'^forgot/$', views.forgot, name='forgot'),
     url(r'^login/$', views.login, name='login'),
+    url(r'^confirm/$', views.confirm, name='confirm'),
+    url(r'^confirmemail/$', views.confirmemail, name='confirmemail'),
  )

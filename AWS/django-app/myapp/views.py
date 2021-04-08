@@ -77,12 +77,11 @@ def home_page(request):
         variables = RequestContext(request, {'items':items})
         return render_to_response('dashboard.html', variables)
     else:
-        variables = RequestContext(request, {})
-        return render_to_response('login.html', variables)
+        return redirect('/login')
 
 def download(request):
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="rawdata.csv"'
+    response['Content-Disposition'] = 'attachment; filename="subniveandata.csv"'
     
     writer = csv.writer(response)
     now=int(time.time())
@@ -146,8 +145,6 @@ def filter_data_time(request,time_filter):
     return render_to_response('dashboard.html',variables)
 
 def signup(request):
-    print(request.GET)
-    print(request.POST)
     if request.method == 'POST':
         username = request.POST.get('username')
         name = request.POST.get('name')
@@ -174,6 +171,7 @@ def signup(request):
             ses = boto3.client('ses', region_name=AWS_REGION, aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
             SENDER = 'vwang314@gatech.edu'
             RECEIVER = email
+            print(token)
             try:
                 #Provide the contents of the email.
                 response = ses.send_email(
@@ -183,11 +181,11 @@ def signup(request):
                     Message={
                         'Body': {
                             'Text': {
-                                'Data': 'Confirm your email at http://ec2-3-80-50-95.compute-1.amazonaws.com:5000/confirm/' + str(token),
+                                'Data': 'Confirm your email at http://ec2-54-175-15-136.compute-1.amazonaws.com:8000/confirm/?p=' + str(token),
                             },
                         },
                         'Subject': {
-                            'Data': 'Photo Gallery Email Confirmation'
+                            'Data': 'Subnivean Data Email Confirmation'
                         },
                     },
                     Source=SENDER
@@ -199,25 +197,50 @@ def signup(request):
                 print("Email sent! Message ID:"),
                 print(response['MessageId']),
                 print(token),
-            return render_to_response('confirmemail.html')
-        variables = RequestContext(request, {})
-        return render_to_response('login.html', variables)
+            return redirect('/confirmemail')
+        return redirect('/login')
     else:
         variables = RequestContext(request, {})
         return render_to_response('signup.html', variables)
 
+def confirm(request):
+    token = request.GET['p']
+    print(token)
+    try:
+        serializer = URLSafeTimedSerializer('some_secret_key')
+        email = serializer.loads(
+            str(token),
+            salt = 'some-secret-salt-for-confirmation'
+        )
+        users_table.update_item(
+            Key={
+                'email': email
+            },
+            UpdateExpression = "set verified=:v",
+            ExpressionAttributeValues={ 
+                ':v': "yes" 
+            }
+        )
+        return redirect('/login')
+    except Exception as e:
+        print('error confirming email')
+        return redirect('/signup')
+
 def login(request):
     if request.method == 'POST':
         try:
-            email = request.form['email']
-            password = request.form['password']
-            existing_email = users_table.scan(FilterExpression=Attr('email').eq(email))
-            matching_email = existing_email['Items']
-            if existing_email is None:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+            existing_username = users_table.scan(FilterExpression=Attr('username').eq(username))
+            matching_username = existing_username['Items']
+            print(username)
+            print(password)
+            print(matching_username)
+            if existing_username is None:
                 return redirect('/')
-            elif (bcrypt.hashpw(password.encode('utf-8'), matching_email[0]['password'].value) == matching_email[0]['password'].value) and matching_email[0]['verified'] == "yes":
+            elif (bcrypt.hashpw(password.encode('utf-8'), matching_username[0]['password'].value) == matching_username[0]['password'].value) and matching_username[0]['verified'] == "yes":
                 serializer = URLSafeTimedSerializer('some_secret_key')
-                session['email'] = serializer.dumps(matching_email[0]['email'], salt="some-secret-salt-for-confirmation")
+                request.session['email'] = serializer.dumps(matching_username[0]['email'], salt="some-secret-salt-for-confirmation")
             return redirect('/')
         except Exception as e:
             print(e)
@@ -230,9 +253,9 @@ def dashboard_home(request):
     variables = RequestContext(request, {})
     return render_to_response('dashboard.html', variables)
 
-def signup(request):
+def confirmemail(request):
     variables = RequestContext(request, {})
-    return render_to_response('signup.html', variables)
+    return render_to_response('confirmemail.html', variables)
 
 def forgot(request):
     return render_to_response('forgotpassword.html')
