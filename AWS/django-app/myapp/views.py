@@ -80,20 +80,23 @@ def home_page(request):
         return redirect('/login')
 
 def download(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="subniveandata.csv"'
-    
-    writer = csv.writer(response)
-    now=int(time.time())
-    timestampold=now-86400
-    response2 = table.scan(
-        FilterExpression=Attr('timestamp').gt(timestampold)
-    )
-    items = response2['Items']
-    writer.writerow(['Station ID', 'Timestamp', 'Latitude', 'Longitude', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
-    for i in range(len(items)):
-        writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['latitude'], items[i]['data']['longitude'], items[i]['data']['amb_temp'], items[i]['data']['amb_hum'], items[i]['data']['snow_temp'], items[i]['data']['snow_depth']])
-    return response
+    try:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="subniveandata.csv"'
+        
+        writer = csv.writer(response)
+        now=int(time.time())
+        timestampold=now-86400
+        response2 = table.scan(
+            FilterExpression=Attr('timestamp').gt(timestampold)
+        )
+        items = response2['Items']
+        writer.writerow(['Station ID', 'Timestamp', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
+        for i in range(len(items)):
+            writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
+        return response
+    except Exception as e:
+        print(e)
 
 def filter_data(request,asset_filter):
     now=int(time.time())
