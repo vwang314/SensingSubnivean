@@ -9,10 +9,10 @@ from dateutil.tz import tzoffset
 
 AllowedActions = ['both', 'publish', 'subscribe']
 
-host = 'a2lfzobrtdvmmc-ats.iot.us-east-1.amazonaws.com'
-rootCAPath = 'root-CA.crt'
-certificatePath = 'AQI-IoT-Thing.cert.pem'
-privateKeyPath = 'AQI-IoT-Thing.private.key'
+host = 'am65ro71nb0w4-ats.iot.us-east-1.amazonaws.com'
+rootCAPath = ''
+certificatePath = ''
+privateKeyPath = ''
 useWebsocket = False
 clientId = 'basicPubSub'
 topic = 'sdk/test/Python'

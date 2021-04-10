@@ -1,3 +1,4 @@
+
 #include <ArduinoBearSSL.h>
 #include <ArduinoECCX08.h>
 #include <ArduinoMqttClient.h>
@@ -87,7 +88,7 @@ void loop() {
   Serial.print("Snow temperature is: ");
   snowTemp = snowTempSens.getTempCByIndex(0);
   Serial.println(snowTemp);
-  do{
+  /*do{
     for(int i = 0; i < 4; i++){
       data[i] = ultrasonic.read();
     }
@@ -113,10 +114,14 @@ void loop() {
     } else {
       Serial.println("Error");
     }
-  }
+  } */
   
   mqttClient.beginMessage("arduino/outgoing");   //message topic
-  mqttClient.print("{\"ambTemp\": ");
+  mqttClient.print("{\"stationID\": ");
+  mqttClient.print(" \"st1\" ");
+  mqttClient.print(", \"timestamp\": ");
+  mqttClient.print(getTime());
+  mqttClient.print(", \"ambTemp\": ");
   mqttClient.print(temp);
   mqttClient.print(", \"ambHum\": ");
   mqttClient.print(hum);
@@ -126,7 +131,7 @@ void loop() {
   mqttClient.print(snowDepth);
   mqttClient.print("}");
   mqttClient.endMessage();
-  delay(1000);
+  delay(5000);
 }
 
 
