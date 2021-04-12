@@ -36,7 +36,7 @@
 <body>
 <input type="hidden" id="accountType" name="accountType" value="{{accountType}}">
 <input type="hidden" id="authorusername" name="variable" value="{{request.user.first_name}} {{request.user.last_name}}">
-<script type="text/javascript" src="/static/assets/js/navbar.js"></script>
+<script type="text/javascript" src="/static/assets/js/navbar.js" username="{{username}}", authorname="{{name}}"></script>
 	<!-- Page container -->
 	<div class="page-container">
 
@@ -45,14 +45,10 @@
 
 			<!-- Main content -->
 			<div class="content-wrapper">
-<!-- Search field -->
+					<!-- Search field -->
 					<div class="panel">
 						<div class="panel-body">							
-
-					
-					<form class="form-horizontal" class="main-search" action="/search/" method="post" role="form" >{%csrf_token%}
-								
-
+						<form class="form-horizontal" class="main-search" action="/search/" method="post" role="form" >{%csrf_token%}
 								<div class="row search-option-buttons">
 								
 
@@ -60,21 +56,8 @@
 										<ul class="list-inline list-inline-condensed no-margin-bottom">
 											<li class="dropdown">
 												<a href="#" class="btn btn-link dropdown-toggle" data-toggle="dropdown">
-													<i class="icon-city position-left"></i> Station <span class="caret"></span>
-												</a>
-
-												<ul class="dropdown-menu">
-													<li><a href="/filter_data/all">All</a></li>
-													<li><a href="/filter_data/ST102">ST102</a></li>
-													<li><a href="/filter_data/ST105">ST105</a></li>
-												</ul>
-											</li>
-
-											<li class="dropdown">
-												<a href="#" class="btn btn-link dropdown-toggle" data-toggle="dropdown">
 													<i class="icon-history position-left"></i> Time Range <span class="caret"></span>
 												</a>
-
 												<ul class="dropdown-menu">
 													<li><a href="/filter_data_time/1">Last 1 m</a></li>
 													<li><a href="/filter_data_time/2">Last 15 m</a></li>
@@ -84,19 +67,15 @@
 													<li><a href="/filter_data_time/6">Lasr 24 hrs</a></li>													
 												</ul>
 											</li>
-
-
 										</ul>
-									</div>
-
-									
+									</div>	
 								</div>
 							</form>
 						</div>
 					</div>
 					<!-- /search field -->
 
-<!-- Content area -->
+				<!-- Content area -->
 				<div class="content">
 				<h4><i class="icon-stack position-left"></i> <span class="text-semibold">Subnivean Sensor Data </span> </h4>
 
@@ -107,13 +86,9 @@
 								<ul class="icons-list">
 			                		<li><a data-action="collapse"></a></li>
 			                		<li><a data-action="reload"></a></li>
-			                		<li><a data-action="close"></a></li>
 			                	</ul>
 		                	</div>
 						</div>
-						
-						
-
 
 						<table class="table datatable-basic">
 							<thead>
@@ -147,12 +122,6 @@
 
 				<!-- /detached content -->
 				</div>
-
-				
-
-
-				
-
 			</div>
 			<!-- /main content -->
 
@@ -161,6 +130,5 @@
 
 	</div>
 	<!-- /page container -->
-<script type="text/javascript" src="/static/assets/js/listingfilter.js"></script>
 </body>
 </html>

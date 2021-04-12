@@ -74,7 +74,9 @@ def home_page(request):
         )
 
         items = response['Items']
-        variables = RequestContext(request, {'items':items})
+        username = request.session['username']
+        name = request.session['name']
+        variables = RequestContext(request, {'items':items, 'name':name, 'username':username})
         return render_to_response('dashboard.html', variables)
     else:
         return redirect('/login')
@@ -97,31 +99,6 @@ def download(request):
         return response
     except Exception as e:
         print(e)
-
-def filter_data(request,asset_filter):
-    now=int(time.time())
-    timestampold=now-86400
-
-    if asset_filter=='all':
-        stationID=''
-        response = table.scan(
-            FilterExpression=Attr('timestamp').gt(timestampold)
-        )
-    elif asset_filter=='ST102':
-        stationID='ST102'
-        response = table.scan(
-            FilterExpression=Key('stationID').eq(stationID) & Attr('timestamp').gt(timestampold)
-        )
-    elif asset_filter=='ST105':
-        stationID='ST105'
-        response = table.scan(
-            FilterExpression=Key('stationID').eq(stationID) & Attr('timestamp').gt(timestampold)
-        )
-    
-    items = response['Items']
-    variables = RequestContext(request, {'items':items})
-    return render_to_response('dashboard.html',variables)
-
 
 def filter_data_time(request,time_filter):
     timestampold=''
@@ -241,6 +218,8 @@ def login(request):
             elif (bcrypt.hashpw(password.encode('utf-8'), matching_username[0]['password'].value) == matching_username[0]['password'].value) and matching_username[0]['verified'] == "yes":
                 serializer = URLSafeTimedSerializer('some_secret_key')
                 request.session['email'] = serializer.dumps(matching_username[0]['email'], salt="some-secret-salt-for-confirmation")
+                request.session['username'] = matching_username[0]['username']
+                request.session['name'] = matching_username[0]['name']
             return redirect('/')
         except Exception as e:
             print(e)
@@ -339,3 +318,32 @@ def newpassword(request):
     else:
         variables = RequestContext(request, {})
         return render_to_response('newpassword.html', variables)
+
+def changepassword(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        password1 = request.POST.get('password1')
+        if(password == password1):
+            try:
+                serializer = URLSafeTimedSerializer('some_secret_key')
+                email = serializer.loads(request.session['email'], salt="some-secret-salt-for-confirmation")
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                users_table.update_item(
+                    Key={
+                        'email': email
+                    },
+                    UpdateExpression = "SET password=:p",
+                    ExpressionAttributeValues={ 
+                        ':p': hashed_password 
+                    }
+                )
+                return redirect('/')
+            except Exception as e:
+                print('error changing password')
+                print(e)
+                return redirect('/cp/')
+        else:
+            return redirect('/cp/')
+    else:
+        variables = RequestContext(request, {})
+        return render_to_response('changepassword.html', variables)
