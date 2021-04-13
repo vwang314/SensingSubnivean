@@ -52,7 +52,7 @@ def check_login_session(request):
             decode = serializer.loads(
                 request.session['email'],
                 salt = 'some-secret-salt-for-confirmation',
-                #max_age = 300
+                max_age = 3600
             )
             return True
         except Exception as e:
@@ -70,59 +70,92 @@ def home_page(request):
         timestampold=now-86400
 
         response = table.scan(
-            FilterExpression=Attr('timestamp').gt(timestampold)
+            #FilterExpression=Attr('timestamp').gt(timestampold)
         )
 
         items = response['Items']
         username = request.session['username']
         name = request.session['name']
-        variables = RequestContext(request, {'items':items, 'name':name, 'username':username})
+        time_filter=0
+        variables = RequestContext(request, {'items':items, 'name':name, 'username':username, 'time_filter':time_filter})
         return render_to_response('dashboard.html', variables)
     else:
         return redirect('/login')
 
-def download(request):
-    try:
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="subniveandata.csv"'
-        
-        writer = csv.writer(response)
-        now=int(time.time())
-        timestampold=now-86400
-        response2 = table.scan(
-            FilterExpression=Attr('timestamp').gt(timestampold)
-        )
-        items = response2['Items']
-        writer.writerow(['Station ID', 'Timestamp', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
-        for i in range(len(items)):
-            writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
-        return response
-    except Exception as e:
-        print(e)
+def download(request,time_filter):
+    if check_login_session(request):
+        try:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="subniveandata.csv"'
+            writer = csv.writer(response)
+            timestampold=''
+            now=int(time.time())
+            timestampold=0
+            if time_filter=='1':
+                timestampold=now - 60
+            elif time_filter=='2':
+                timestampold=now - 900
+            elif time_filter=='3':
+                timestampold=now - 3600
+            elif time_filter=='4':
+                timestampold=now - 21600
+            elif time_filter=='5':
+                timestampold=now - 43200
+            elif time_filter=='6':
+                timestampold=now - 86400
+            elif time_filter=='7':
+                timestampold=now - 172800
+            elif time_filter=='8':
+                timestampold=now - 259200
+            elif time_filter=='9':
+                timestampold=now - 604800
+            response2 = table.scan(
+                FilterExpression=Attr('timestamp').gt(timestampold)
+            )
+            items = response2['Items']
+            writer.writerow(['Station ID', 'Timestamp', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
+            for i in range(len(items)):
+                writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
+            return response
+        except Exception as e:
+            print(e)
+            print("download failed")
+    else:
+        return redirect('/login')
 
 def filter_data_time(request,time_filter):
-    timestampold=''
-    now=int(time.time())
-    if time_filter=='1':
-        timestampold=now - 60
-    elif time_filter=='2':
-        timestampold=now - 900
-    elif time_filter=='3':
-        timestampold=now - 3600
-    elif time_filter=='4':
-        timestampold=now - 21600
-    elif time_filter=='5':
-        timestampold=now - 43200
-    elif time_filter=='6':
-        timestampold=now - 86400
-            
-    print(timestampold)
-    response = table.scan(
-            FilterExpression=Attr('timestamp').gt(timestampold)
-        )
-    items = response['Items']
-    variables = RequestContext(request, {'items':items})
-    return render_to_response('dashboard.html',variables)
+    if check_login_session(request):
+        timestampold=''
+        now=int(time.time())
+        if time_filter=='1':
+            timestampold=now - 60
+        elif time_filter=='2':
+            timestampold=now - 900
+        elif time_filter=='3':
+            timestampold=now - 3600
+        elif time_filter=='4':
+            timestampold=now - 21600
+        elif time_filter=='5':
+            timestampold=now - 43200
+        elif time_filter=='6':
+            timestampold=now - 86400
+        elif time_filter=='7':
+            timestampold=now - 172800
+        elif time_filter=='8':
+            timestampold=now - 259200
+        elif time_filter=='9':
+            timestampold=now - 604800
+                
+        response = table.scan(
+                FilterExpression=Attr('timestamp').gt(timestampold)
+            )
+        items = response['Items']
+        username = request.session['username']
+        name = request.session['name']
+        variables = RequestContext(request, {'items':items, 'name':name, 'username':username, 'time_filter':time_filter})
+        return render_to_response('dashboard.html',variables)
+    else:
+        return redirect('/login')
 
 def signup(request):
     if request.method == 'POST':
@@ -183,6 +216,10 @@ def signup(request):
         variables = RequestContext(request, {})
         return render_to_response('signup.html', variables)
 
+def confirmemail(request):
+    variables = RequestContext(request, {})
+    return render_to_response('confirmemail.html', variables)
+
 def confirm(request):
     token = request.GET['p']
     print(token)
@@ -236,14 +273,6 @@ def logout(request):
         print(e)
         return redirect('/login')
 
-def dashboard_home(request):    
-    variables = RequestContext(request, {})
-    return render_to_response('dashboard.html', variables)
-
-def confirmemail(request):
-    variables = RequestContext(request, {})
-    return render_to_response('confirmemail.html', variables)
-
 def forgot(request):
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -281,10 +310,15 @@ def forgot(request):
                 print("Email sent! Message ID:"),
                 print(response['MessageId']),
                 print(token),
-        return redirect('/login')
+                return redirect('/checkemail')
+        return redirect('/forgot')
     else:
         variables = RequestContext(request, {})
         return render_to_response('forgotpassword.html', variables)
+
+def checkemail(request):
+    variables = RequestContext(request, {})
+    return render_to_response('checkemail.html', variables)
     
 def newpassword(request):
     if request.method == 'POST':
