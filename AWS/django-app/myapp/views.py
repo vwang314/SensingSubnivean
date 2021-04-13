@@ -21,7 +21,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 import sys, os
-import time
+import time, datetime
 from django.shortcuts import render
 import csv
 import boto3
@@ -74,6 +74,9 @@ def home_page(request):
         )
 
         items = response['Items']
+        for i in range(len(items)):
+            timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
+            items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         username = request.session['username']
         name = request.session['name']
         time_filter=0
@@ -113,6 +116,9 @@ def download(request,time_filter):
                 FilterExpression=Attr('timestamp').gt(timestampold)
             )
             items = response2['Items']
+            for i in range(len(items)):
+                timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
+                items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             writer.writerow(['Station ID', 'Timestamp', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
             for i in range(len(items)):
                 writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
@@ -150,6 +156,9 @@ def filter_data_time(request,time_filter):
                 FilterExpression=Attr('timestamp').gt(timestampold)
             )
         items = response['Items']
+        for i in range(len(items)):
+            timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
+            items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         username = request.session['username']
         name = request.session['name']
         variables = RequestContext(request, {'items':items, 'name':name, 'username':username, 'time_filter':time_filter})
