@@ -41080,6 +41080,12 @@ fieldset[disabled] .btn-ig-bg {
   padding-bottom: 120px;
 }
 
+.error {
+  border: 2px solid red;
+  padding: 5px;
+  width: 30%;
+}
+
 /*------------------------------------------------------------------
     [No padding, margin space]
 ------------------------------------------------------------------*/

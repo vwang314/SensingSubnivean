@@ -176,7 +176,15 @@ def signup(request):
         password1 = request.POST.get('password1')
         existing_emails = users_table.scan(FilterExpression=Attr('email').eq(email))
         matching_emails = existing_emails['Items']
-        if (len(matching_emails) == 0) and (password == password1):
+        if ((len(matching_emails) != 0) and (matching_emails[0]['verified'] == "yes")):
+            error_msg = 'Error: Account already exists.'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('signup.html', variables)
+        elif (password != password1):
+            error_msg = 'Error: Passwords do not match.'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('signup.html', variables)
+        else:
             userID = uuid.uuid4()
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             users_table.put_item(
@@ -221,9 +229,9 @@ def signup(request):
                 print(response['MessageId']),
                 print(token),
             return redirect('/confirmemail')
-        return redirect('/login')
     else:
-        variables = RequestContext(request, {})
+        error_msg = ''
+        variables = RequestContext(request, {'error_msg':error_msg})
         return render_to_response('signup.html', variables)
 
 def confirmemail(request):
@@ -255,24 +263,34 @@ def confirm(request):
 
 def login(request):
     if request.method == 'POST':
-        try:
-            username = request.POST.get('username')
-            password = request.POST.get('password')
-            existing_username = users_table.scan(FilterExpression=Attr('username').eq(username))
-            matching_username = existing_username['Items']
-            if existing_username is None:
-                return redirect('/')
-            elif (bcrypt.hashpw(password.encode('utf-8'), matching_username[0]['password'].value) == matching_username[0]['password'].value) and matching_username[0]['verified'] == "yes":
-                serializer = URLSafeTimedSerializer('some_secret_key')
-                request.session['email'] = serializer.dumps(matching_username[0]['email'], salt="some-secret-salt-for-confirmation")
-                request.session['username'] = matching_username[0]['username']
-                request.session['name'] = matching_username[0]['name']
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        existing_username = users_table.scan(FilterExpression=Attr('username').eq(username))
+        matching_username = existing_username['Items']
+        if len(matching_username) == 0:
+            error_msg = 'Error: Username not found'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('login.html', variables)
+        elif (bcrypt.hashpw(password.encode('utf-8'), matching_username[0]['password'].value) != matching_username[0]['password'].value):
+            error_msg = 'Error: Password Incorrect'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('login.html', variables)
+        elif (matching_username[0]['verified'] != "yes"):
+            error_msg = 'Error: Account not verified. Check your email or go back to signup.'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('login.html', variables)
+        else:
+            serializer = URLSafeTimedSerializer('some_secret_key')
+            request.session['email'] = serializer.dumps(matching_username[0]['email'], salt="some-secret-salt-for-confirmation")
+            request.session['username'] = matching_username[0]['username']
+            request.session['name'] = matching_username[0]['name']
             return redirect('/')
-        except Exception as e:
-            print(e)
-            return redirect('/')
+        error_msg = 'Error logging in'
+        variables = RequestContext(request, {'error_msg':error_msg})
+        return render_to_response('login.html', variables)
     else:
-        variables = RequestContext(request, {})
+        error_msg = ''
+        variables = RequestContext(request, {'error_msg':error_msg})
         return render_to_response('login.html', variables)
 
 def logout(request):
@@ -321,9 +339,13 @@ def forgot(request):
                 print(response['MessageId']),
                 print(token),
                 return redirect('/checkemail')
-        return redirect('/forgot')
+        else:
+            error_msg = 'Error: Account not found with that email'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('forgotpassword.html', variables)
     else:
-        variables = RequestContext(request, {})
+        error_msg = ''
+        variables = RequestContext(request, {'error_msg':error_msg})
         return render_to_response('forgotpassword.html', variables)
 
 def checkemail(request):
@@ -358,7 +380,9 @@ def newpassword(request):
                 print(e)
                 return redirect('/np/')
         else:
-            return redirect('/np/')
+            error_msg = 'Error: Passwords do not match'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('newpassword.html', variables)
     else:
         variables = RequestContext(request, {})
         return render_to_response('newpassword.html', variables)
@@ -387,7 +411,9 @@ def changepassword(request):
                 print(e)
                 return redirect('/cp/')
         else:
-            return redirect('/cp/')
+            error_msg = 'Error: Passwords do not match'
+            variables = RequestContext(request, {'error_msg':error_msg})
+            return render_to_response('changepassword.html', variables)
     else:
         variables = RequestContext(request, {})
         return render_to_response('changepassword.html', variables)

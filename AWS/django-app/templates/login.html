@@ -27,6 +27,9 @@
     <br>
     <div id="message"></div>
     </center>
+    {% if error_msg != '' %}
+    <center><div class="error"> {{error_msg}}</div></center>
+    {% endif %}
         <!--========== PAGE CONTENT ==========-->
         <div class="content-sm container">
             <div class="row">
