@@ -28,6 +28,8 @@
 	<script type="text/javascript" src="/static/assets/js/plugins/forms/selects/select2.min.js"></script>
 
 	<script type="text/javascript" src="/static/assets/js/pages/datatables_basic.js"></script>
+	<!-- /theme JS files -->
+<link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon"/>
 </head>
 
 <body>
@@ -64,7 +66,8 @@
 													<li><a href="/filter_data_time/6">Last 24 hrs</a></li>
 													<li><a href="/filter_data_time/7">Last 48 hrs</a></li>
 													<li><a href="/filter_data_time/8">Last 72 hrs</a></li>
-													<li><a href="/filter_data_time/9">Last week</a></li>											
+													<li><a href="/filter_data_time/9">Last week</a></li>	
+													<li><a href="/">All</a></li>										
 												</ul>
 											</li>
 										</ul>
@@ -95,6 +98,7 @@
 								<tr>
 									<th>Station ID</th>
 									<th>Timestamp</th>
+									<th>Date and Time</th>
 									<th>Ambient Temperature</th>
 									<th>Ambient Humidity</th>
 									<th>Snow Temperature</th>									
@@ -105,7 +109,8 @@
 								{% for item in items %}
 								<tr>
 									<td>{{item.stationID}}</td>
-									<td>{{item.timestamp}}</td>									
+									<td>{{item.timestamp}}</td>
+									<td>{{item.datetime}}</td>									
 									<td>{{item.data.ambTemp}}</td>
 									<td>{{item.data.ambHum}}</td>	
 									<td>{{item.data.snowTemp}}</td>	

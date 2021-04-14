@@ -35,6 +35,7 @@ from itsdangerous import URLSafeTimedSerializer
 from django.template.context_processors import csrf
 
 sys.path.append(os.path.abspath(os.path.join('..', 'utils')))
+sys.path.append(os.path.abspath("myapp"))
 from env import AWS_ACCESS_KEY, AWS_SECRET_ACCESS_KEY, AWS_REGION
 
 dynamodb = boto3.resource('dynamodb', aws_access_key_id=AWS_ACCESS_KEY,
@@ -76,7 +77,7 @@ def home_page(request):
         items = response['Items']
         for i in range(len(items)):
             timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
-            items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            items[i]['datetime'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         username = request.session['username']
         name = request.session['name']
         time_filter=0
@@ -118,10 +119,10 @@ def download(request,time_filter):
             items = response2['Items']
             for i in range(len(items)):
                 timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
-                items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            writer.writerow(['Station ID', 'Timestamp', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
+                items[i]['datetime'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            writer.writerow(['Station ID', 'Timestamp', 'Date and Time', 'Ambient Temperature', 'Ambient Humidity', 'Snow Temperature', 'Snow Depth'])
             for i in range(len(items)):
-                writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
+                writer.writerow([items[i]['stationID'], items[i]['timestamp'], items[i]['datetime'], items[i]['data']['ambTemp'], items[i]['data']['ambHum'], items[i]['data']['snowTemp'], items[i]['data']['snowDepth']])
             return response
         except Exception as e:
             print(e)
@@ -158,7 +159,7 @@ def filter_data_time(request,time_filter):
         items = response['Items']
         for i in range(len(items)):
             timestamp = datetime.datetime.fromtimestamp(items[i]['timestamp'])
-            items[i]['timestamp'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            items[i]['datetime'] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         username = request.session['username']
         name = request.session['name']
         variables = RequestContext(request, {'items':items, 'name':name, 'username':username, 'time_filter':time_filter})
