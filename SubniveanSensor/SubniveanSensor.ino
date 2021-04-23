@@ -1,17 +1,54 @@
+#include "secrets.h"
+#include <WiFiClientSecure.h>
+#include <MQTTClient.h>
+#include <ArduinoJson.h>
+#include "WiFi.h"
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 
-#include <ArduinoBearSSL.h>
-#include <ArduinoECCX08.h>
-#include <ArduinoMqttClient.h>
-#include <WiFiNINA.h> // change to #include <WiFi101.h> for MKR1000
-#include "arduino_secrets.h"
-/////// Enter your sensitive data in arduino_secrets.h
-const char ssid[]        = SECRET_SSID;
-const char pass[]        = SECRET_PASS;
-const char broker[]      = SECRET_BROKER;
-const char* certificate  = SECRET_CERTIFICATE;
-WiFiClient    wifiClient;            // Used for the TCP socket connection
-BearSSLClient sslClient(wifiClient); // Used for SSL/TLS connection, integrates with ECC508
-MqttClient    mqttClient(sslClient);
+// The MQTT topics that this device should publish/subscribe
+#define AWS_IOT_PUBLISH_TOPIC   "esp32/pub"
+#define AWS_IOT_SUBSCRIBE_TOPIC "esp32/sub"
+
+WiFiClientSecure net = WiFiClientSecure();
+MQTTClient client = MQTTClient(256);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
+void connectAWS()
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED){
+    delay(500);
+    Serial.print(".");
+  }
+  // Configure WiFiClientSecure to use the AWS IoT device credentials
+  net.setCACert(AWS_CERT_CA);
+  net.setCertificate(AWS_CERT_CRT);
+  net.setPrivateKey(AWS_CERT_PRIVATE);
+  // Connect to the MQTT broker on the AWS endpoint we defined earlier
+  client.begin(AWS_IOT_ENDPOINT, 8883, net);
+  // Create a message handler
+  client.onMessage(messageHandler);
+  Serial.print("Connecting to AWS IOT");
+  while (!client.connect(THINGNAME)) {
+    Serial.print(".");
+    delay(100);
+  }
+  if(!client.connected()){
+    Serial.println("AWS IoT Timeout!");
+    return;
+  }
+  // Subscribe to a topic
+  client.subscribe(AWS_IOT_SUBSCRIBE_TOPIC);
+  Serial.println("AWS IoT Connected!");
+}
+
+void messageHandler(String &topic, String &payload) {
+  Serial.println("incoming: " + topic + " - " + payload);
+}
 
 
 #include <DHT.h>
@@ -29,53 +66,18 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature snowTempSens(&oneWire);
 float snowTemp;
 
-
-#include <Arduino.h>
-#include "wiring_private.h"
-Uart ultrasonic(&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-void SERCOM0_Handler(){
-  ultrasonic.IrqHandler();
-}
-unsigned char data[4]={};
-float distance;
-float snowDepth;
-
-
 void setup() {
   Serial.begin(115200);
   while (!Serial);
-  if (!ECCX08.begin()) {
-      Serial.println("No ECCX08 present!");
-      while (1);
-  }
 
-  ArduinoBearSSL.onGetTime(getTime);
-  sslClient.setEccSlot(0, certificate);
-
-  // Optional, set the client id used for MQTT,
-  // mqttClient.setId("clientId");
-  mqttClient.onMessage(onMessageReceived);
-
+  connectAWS();
+  timeClient.begin();
   dht.begin();
   snowTempSens.begin();
-  pinPeripheral(5, PIO_SERCOM_ALT);
-  pinPeripheral(6, PIO_SERCOM_ALT);
-  ultrasonic.begin(9600);
 }
 
 void loop() {
-  if (WiFi.status() != WL_CONNECTED) {
-    connectWiFi();
-  }
-
-  if (!mqttClient.connected()) {
-    // MQTT client is disconnected, connect
-    connectMQTT();
-  }
-
-  // poll for new MQTT messages and send keep alives
-  mqttClient.poll();
-
+  timeClient.update();
   hum = dht.readHumidity();
   temp= dht.readTemperature();
   //Print temp and humidity values to serial monitor
@@ -88,106 +90,15 @@ void loop() {
   Serial.print("Snow temperature is: ");
   snowTemp = snowTempSens.getTempCByIndex(0);
   Serial.println(snowTemp);
-  /*do{
-    for(int i = 0; i < 4; i++){
-      data[i] = ultrasonic.read();
-    }
-  } while(ultrasonic.read() == 0xff);
-  ultrasonic.flush();
-  if(data[0] == 0xff){
-    int sum;
-    sum = (data[0] + data[1] + data[2]) & 0x00FF;
-    if(sum == data[3]){
-      distance = (data[1]<<8) + data[2];
-      if(distance > 30){
-        Serial.print("Distance = ");
-        Serial.print(distance);
-        Serial.println("mm");
-        snowDepth = 3 - (distance/1000);
-        Serial.print("Snowdepth = ");
-        Serial.print(snowDepth);
-        Serial.println("m");
-      } else {
-        Serial.println("Distance below lower limit");
-        snowDepth = -1;
-      }
-    } else {
-      Serial.println("Error");
-    }
-  } */
-  
-  mqttClient.beginMessage("arduino/outgoing");   //message topic
-  mqttClient.print("{\"stationID\": ");
-  mqttClient.print(" \"st1\" ");
-  mqttClient.print(", \"timestamp\": ");
-  mqttClient.print(getTime());
-  mqttClient.print(", \"ambTemp\": ");
-  mqttClient.print(temp);
-  mqttClient.print(", \"ambHum\": ");
-  mqttClient.print(hum);
-  mqttClient.print(", \"snowTemp\": ");
-  mqttClient.print(snowTemp);
-  mqttClient.print(", \"snowDepth\": ");
-  mqttClient.print(snowDepth);
-  mqttClient.print("}");
-  mqttClient.endMessage();
+
+  StaticJsonDocument<200> doc;
+  doc["stationID"] = "st1";
+  doc["timestamp"] = timeClient.getEpochTime();
+  doc["ambTemp"] = temp;
+  doc["ambHum"] = hum;
+  doc["snowTemp"] = snowTemp;
+  char jsonBuffer[512];
+  serializeJson(doc, jsonBuffer); // print to client
+  client.publish(AWS_IOT_PUBLISH_TOPIC, jsonBuffer);
   delay(5000);
-}
-
-
-unsigned long getTime() {
-  // get the current time from the WiFi module  
-  return WiFi.getTime();
-}
-
-void connectWiFi() {
-  Serial.print("Attempting to connect to SSID: ");
-  Serial.print(ssid);
-  Serial.print(" ");
-
-  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
-    // failed, retry
-    Serial.print(".");
-    delay(5000);
-  }
-  Serial.println();
-
-  Serial.println("You're connected to the network");
-  Serial.println();
-}
-
-void connectMQTT() {
-  Serial.print("Attempting to MQTT broker: ");
-  Serial.print(broker);
-  Serial.println(" ");
-
-  while (!mqttClient.connect(broker, 8883)) {
-    // failed, retry
-    Serial.print(".");
-    delay(5000);
-  }
-  Serial.println();
-
-  Serial.println("You're connected to the MQTT broker");
-  Serial.println();
-
-  // subscribe to a topic
-  mqttClient.subscribe("arduino/incoming");
-}
-
-void onMessageReceived(int messageSize) {
-  // we received a message, print out the topic and contents
-  Serial.print("Received a message with topic '");
-  Serial.print(mqttClient.messageTopic());
-  Serial.print("', length ");
-  Serial.print(messageSize);
-  Serial.println(" bytes:");
-
-  // use the Stream interface to print the contents
-  while (mqttClient.available()) {
-    Serial.print((char)mqttClient.read());
-  }
-  Serial.println();
-
-  Serial.println();
 }
