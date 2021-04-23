@@ -1,3 +1,5 @@
 SubniveanSensor/arduino_secrets.h
 SubniveanSensor/secrets.h
 AWS/django-app/env.py
+*__pycache__*
+*.pyc
