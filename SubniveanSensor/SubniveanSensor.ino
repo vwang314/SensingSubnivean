@@ -20,8 +20,8 @@ NTPClient timeClient(ntpUDP);
 #define DHTPIN 4     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
-float hum;  //Stores humidity value
-float temp; //Stores temperature value
+float hum = 0.0;  //Stores humidity value
+float temp = 0.0; //Stores temperature value
 
 
 #include <OneWire.h>
@@ -29,7 +29,7 @@ float temp; //Stores temperature value
 #define ONE_WIRE_BUS 2
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature snowTempSens(&oneWire);
-float snowTemp;
+float snowTemp = 0.0;
 
 #define RXD2 17   // <-- define your favourite RX pin
 #define TXD2 16   // <-- define your favourite TX pin
@@ -75,7 +75,7 @@ void loop() {
   doc["snowDepth"] = snowDepth;
   char jsonBuffer[512];
   serializeJson(doc, jsonBuffer); // print to client
-  client.publish(AWS_IOT_PUBLISH_TOPIC, jsonBuffer);
+  client.publish(AWS_IOT_PUBLISH_TOPIC, jsonBuffer); 
   delay(1000);
 }
 
@@ -101,6 +101,9 @@ void measure_distance(void * parameter){
     }
     delay(100);  //!!!! Timing must be ~100 ms !!!! (idk why)
     snowDepth = 300 - distance;
+    if(snowDepth < 0){
+      snowDepth = 0;
+    }
     Serial.print("Snow depth: ");
     Serial.println(snowDepth);
   }
